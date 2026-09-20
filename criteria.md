@@ -23,8 +23,8 @@ For at least 4 of my 5 test questions, the retrieved chunks include one that
 contains the answer.
 
 **Why this target:**
-<!-- e.g. "One of my questions is about a topic only two documents mention, so
-     I expect that one to be hard." -->
+
+This serves as a cut off point with 80% of the cases passing and producing relevant chunk associated with the prompt. If this is not the case our RAG system is actually hallucinating.
 
 ---
 
@@ -33,8 +33,8 @@ contains the answer.
 Every answer the system produces names at least one source document.
 
 **Why this target:**
-<!-- Why all five and not four? What about your setup makes that achievable —
-     or what would have to go wrong for it not to be? -->
+
+This is important so we know the retrieval is backed by a source of truth that is from the chunks and it is not made up. We need to show proof or citation for every single result we showcase at the retrieval step.
 
 ---
 
@@ -50,12 +50,12 @@ in at least 4 of 5 tries.
      just keep five of them, or the "4 of 5" above has nothing to be 4 of. -->
 
 **Why this target:**
-<!-- What did your distances look like when you set the cutoff in Milestone 4?
-     Was there a clean gap, or did the two groups overlap? -->
 
----
+We don't want to generate answers that are incorrect. Asking irrelevant questions should be marked as insufficient information because we don't have the relevant chunks in our system to back the retrieval. This is a guardrail to stop hallucinating.
 
 ## 4. Something about your chunks
+
+No chunk is under 40 characters or over 600
 
 <!-- YOU WRITE THIS ONE.
 
@@ -72,7 +72,9 @@ in at least 4 of 5 tries.
 
 
 **Why this target:**
+Too many little chunks will cause more deviation of accuracy - meaning it will create confusion in the system while retrieving results we want our chunks to be of the right size so that we can pick the correct one instead of too many correct answers we are aiming for one correct answer.
 
+Too larger chunks will force too much information in one chunk leading to cohesion same kind of confusion where retrieval will pick out the wrong chunk or will not be able to find the relevant chunk because there is too much information in one.
 
 
 ---
@@ -86,15 +88,21 @@ in at least 4 of 5 tries.
      handles badly, about source attribution being correct rather than merely
      present — anything, as long as it names a number or an observable
      outcome. -->
-
+* **Formula Name:** This metric is called the **F1-Score for Factual Correctness**.
+* **The Formula:** $$Score = \frac{TP}{TP + 0.5 \times (FP + FN)}$$
+* **Target Threshold:** The RAG system must achieve a minimum average score of **0.75** across the golden test dataset.
 
 
 **Why this target:**
+A target of 0.75 to 1.0 mathematically ensures the LLM captures the majority of critical facts (high recall) while strictly limiting hallucinations and unverified claims (high precision).
 
+**what other values mean for a RAG system?**  
+These values will help determine where the current system is to help with trouble shooting.
 
-
----
-
+0.85 – 1.00 (Excellent / Critical Risk)
+0.70 – 0.84 (Good / Standard Production)
+0.50 – 0.69 (Average / Room for Improvement)
+Below 0.50 (Poor / Failing)
 <!-- ─────────────────────────────────────────────────────────────────────────
      UNIT 2 — read this before you change anything above.
 
