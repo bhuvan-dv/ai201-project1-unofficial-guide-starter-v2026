@@ -25,14 +25,14 @@ This is a question-answering system over `campus_life`, a corpus of 88 short,
 student-written posts about dorms, dining halls, courses, and campus admin
 logistics. It answers concrete, factual questions like "what's the workload
 for ENGL 205?", "when do dining jobs get posted?", or "is the housing lottery
-actually random?" — pulling the answer from the specific post that covers it
+actually random?" by pulling the answer from the specific post that covers it
 and naming that file as its source. If a question falls outside what the
 corpus covers (Mongolia's capital, changing motor oil), it says so instead of
 guessing.
 
 ## Chunking Strategy
 
-**Chunk size:** 300 characters (ceiling for the fallback only — see below)
+**Chunk size:** 300 characters (ceiling for the fallback only; see below)
 **Overlap:** 100 characters (only used by the fallback)
 
 `campus_life` documents are short (88 docs, ~317 characters average) and
@@ -48,7 +48,7 @@ each chunk is one self-contained thought. The document's title line gets
 merged into the first body paragraph rather than becoming its own tiny chunk
 (otherwise every one of the 88 documents would produce a ~30-character
 title-only chunk). Checking the actual paragraph lengths across the corpus
-(183 paragraphs total) showed only 2 exceed 300 characters — so 300 is set
+(183 paragraphs total) showed only 2 exceed 300 characters, so 300 is set
 as a ceiling that catches those two outliers without ever touching the other
 181. For a paragraph over that ceiling, whole sentences are packed in until
 the next one would push it over the limit, so the cut lands on a sentence
@@ -64,31 +64,31 @@ splitting instead of just shrinking the same fixed-window approach.
 
 ## Sample Chunks
 
-**Chunk 1** — source: `dining_north_kitchen.txt#0` — produced by: `chunker.py::split_documents`
+**Chunk 1** (source: `dining_north_kitchen.txt#0`, produced by: `chunker.py::split_documents`)
 
 ```
 North Kitchen. Second-year here. Wait times: none, it seats 60 and is rarely more than half full. The thing worth going for is the rotating regional menu, which changes fortnightly and is ambitious. The thing to know is that closed all summer and during reading week.
 ```
 
-**Chunk 2** — source: `course_biol_160.txt#2` — produced by: `chunker.py::split_documents`
+**Chunk 2** (source: `course_biol_160.txt#2`, produced by: `chunker.py::split_documents`)
 
 ```
 The one piece of advice: the unit tests come fast, roughly every three weeks; falling behind once is very hard to recover from.
 ```
 
-**Chunk 3** — source: `course_econ_101.txt#1` — produced by: `chunker.py::split_documents`
+**Chunk 3** (source: `course_econ_101.txt#1`, produced by: `chunker.py::split_documents`)
 
 ```
 Expect 4 hours a week outside class.
 ```
 
-**Chunk 4** — source: `admin_housing_lottery.txt#0` — produced by: `chunker.py::split_documents`
+**Chunk 4** (source: `admin_housing_lottery.txt#0`, produced by: `chunker.py::split_documents`)
 
 ```
 On the housing lottery. The housing lottery is not random in the way most people assume. Rising sophomores get a number drawn at random, but juniors and seniors are ordered by accumulated credit hours first, and only tie-break randomly.
 ```
 
-**Chunk 5** — source: `admin_housing_lottery.txt#1` — produced by: `chunker.py::split_documents`
+**Chunk 5** (source: `admin_housing_lottery.txt#1`, produced by: `chunker.py::split_documents`)
 
 ```
 That means a senior who took summer courses reliably beats a senior who didn't. Numbers come out the second week of March and selection runs over four evenings.
@@ -110,13 +110,13 @@ The paths get cleared by 7am on weekdays and considerably later on weekends (win
 **Top-k:** I tried `TOP_K=3` first, to cut down on off-topic chunks riding along
 with the right one. It backfired: for my HIST 118 question, the answer
 (`course_hist_118_workload.txt`) ranks 5th, behind two `course_math_220`
-chunks that only matched because they also mention "problem sets" — top-3
+chunks that only matched because they also mention "problem sets"; top-3
 would have missed it entirely. I also tried `TOP_K=7`; it didn't recover
 anything new (every question's answer chunk already shows up by rank 5 at
 worst) and just added two more off-topic chunks per question. Kept `TOP_K=5`.
 
 **My relevance cutoff:** `0.6`. My 5 in-scope questions topped out at 0.460,
-my 5 out-of-scope questions bottomed out at 0.780 — a wide, clean gap with no
+my 5 out-of-scope questions bottomed out at 0.780, a wide, clean gap with no
 overlap. 0.6 sits centered in it.
 
 | Question | In corpus? | Best distance |
@@ -143,9 +143,9 @@ overlap. 0.6 sits centered in it.
 
      Milestone 5. -->
 
-**1.** I described my corpus to Claude — short posts, blank-line-separated
+**1.** I described my corpus to Claude (short posts, blank-line-separated
 paragraphs, one long post (`housing_old_brewhouse.txt`) with four distinct
-sub-topics — and asked it to help design and write the chunking function.
+sub-topics) and asked it to help design and write the chunking function.
 The first version paired paragraph-splitting with a raw character-window
 fallback for oversized paragraphs. When we printed the actual fallback
 output, it had cut a real sentence mid-word ("...beats a se"). I asked how a
@@ -155,14 +155,14 @@ whole sentences.
 
 **2.** I asked Claude to lower `TOP_K` from 5 to 3 to cut down on off-topic
 chunks riding along with the right one. Instead of just changing it, it
-tested the new value against all five of my test questions first — the
+tested the new value against all five of my test questions first: the
 correct chunk for my HIST 118 question dropped out of the top 3 entirely,
 outranked by two unrelated `course_math_220` chunks that only matched
 because they also mention "problem sets." I kept `TOP_K=5` because of that.
 
 **3.** I had Claude check `criteria.md` for problems. It caught a real
-inconsistency — criterion 1 said "90%" but my stated target was 4-of-5, which
-is 80% — and an unfinished sentence in criterion 2. It refused to write the
+inconsistency (criterion 1 said "90%" but my stated target was 4-of-5, which
+is 80%) and an unfinished sentence in criterion 2. It refused to write the
 actual reasoning for any of the five criteria, pointing to the assignment's
 own rule against letting AI write acceptance criteria, so I wrote and fixed
 that part myself.

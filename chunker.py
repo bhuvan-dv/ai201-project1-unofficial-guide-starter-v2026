@@ -149,7 +149,7 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
     cutting it at a fixed character count. The title is merged into the first
     body paragraph so it doesn't become its own near-empty chunk.
 
-    A paragraph over CHUNK_SIZE (rare in this corpus — 2 out of 183) falls
+    A paragraph over CHUNK_SIZE (rare in this corpus: 2 out of 183) falls
     back to packing whole sentences up to the limit, and only drops to a raw
     character window if a single sentence alone exceeds CHUNK_SIZE.
     """
