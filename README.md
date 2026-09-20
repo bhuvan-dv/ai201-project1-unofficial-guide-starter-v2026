@@ -21,11 +21,14 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+This is a question-answering system over `campus_life`, a corpus of 88 short,
+student-written posts about dorms, dining halls, courses, and campus admin
+logistics. It answers concrete, factual questions like "what's the workload
+for ENGL 205?", "when do dining jobs get posted?", or "is the housing lottery
+actually random?" — pulling the answer from the specific post that covers it
+and naming that file as its source. If a question falls outside what the
+corpus covers (Mongolia's capital, changing motor oil), it says so instead of
+guessing.
 
 ## Chunking Strategy
 
@@ -140,9 +143,29 @@ overlap. 0.6 sits centered in it.
 
      Milestone 5. -->
 
-**1.**
+**1.** I described my corpus to Claude — short posts, blank-line-separated
+paragraphs, one long post (`housing_old_brewhouse.txt`) with four distinct
+sub-topics — and asked it to help design and write the chunking function.
+The first version paired paragraph-splitting with a raw character-window
+fallback for oversized paragraphs. When we printed the actual fallback
+output, it had cut a real sentence mid-word ("...beats a se"). I asked how a
+sentence-boundary approach would compare instead, and had it add a
+sentence-boundary tier before the character-window fallback so cuts land on
+whole sentences.
 
-**2.**
+**2.** I asked Claude to lower `TOP_K` from 5 to 3 to cut down on off-topic
+chunks riding along with the right one. Instead of just changing it, it
+tested the new value against all five of my test questions first — the
+correct chunk for my HIST 118 question dropped out of the top 3 entirely,
+outranked by two unrelated `course_math_220` chunks that only matched
+because they also mention "problem sets." I kept `TOP_K=5` because of that.
+
+**3.** I had Claude check `criteria.md` for problems. It caught a real
+inconsistency — criterion 1 said "90%" but my stated target was 4-of-5, which
+is 80% — and an unfinished sentence in criterion 2. It refused to write the
+actual reasoning for any of the five criteria, pointing to the assignment's
+own rule against letting AI write acceptance criteria, so I wrote and fixed
+that part myself.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
