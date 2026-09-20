@@ -96,27 +96,38 @@ That means a senior who took summer courses reliably beats a senior who didn't. 
 <!-- One complete question and answer, pasted as text, with the source line
      visible. Milestone 4. -->
 
-**Question:**
+**Question:** What time do the paths get cleared during winter?
 
 **Answer:**
 
 ```
+The paths get cleared by 7am on weekdays and considerably later on weekends (winter_gear.txt).
 ```
 
-**My relevance cutoff:**
+**Top-k:** I tried `TOP_K=3` first, to cut down on off-topic chunks riding along
+with the right one. It backfired: for my HIST 118 question, the answer
+(`course_hist_118_workload.txt`) ranks 5th, behind two `course_math_220`
+chunks that only matched because they also mention "problem sets" — top-3
+would have missed it entirely. I also tried `TOP_K=7`; it didn't recover
+anything new (every question's answer chunk already shows up by rank 5 at
+worst) and just added two more off-topic chunks per question. Kept `TOP_K=5`.
 
-<!-- The number you set in config.py, and how you got there.
-
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
-
-     Milestone 4. -->
+**My relevance cutoff:** `0.6`. My 5 in-scope questions topped out at 0.460,
+my 5 out-of-scope questions bottomed out at 0.780 — a wide, clean gap with no
+overlap. 0.6 sits centered in it.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| What's the Workload for ENGL 205? | Yes | 0.392 |
+| What time do the paths get cleared during Winter times? | Yes | 0.248 |
+| When to Dining jobs posts? | Yes | 0.460 |
+| Where is the health counselling at? What's the wait time? | Yes | 0.311 |
+| Are there lots of problem sets in HIST 118 Modern World History class? | Yes | 0.384 |
+| What is the capital of Mongolia? | No | 0.780 |
+| How do I change the oil in a diesel engine? | No | 0.923 |
+| Who won the 1994 World Cup? | No | 0.829 |
+| What is the recommended dosage of ibuprofen for a headache? | No | 0.824 |
+| How do I write a for loop in Rust? | No | 0.864 |
 
 ## How I Used AI
 
