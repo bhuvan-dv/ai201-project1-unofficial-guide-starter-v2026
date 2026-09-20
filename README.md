@@ -29,53 +29,66 @@
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** 300 characters (ceiling for the fallback only — see below)
+**Overlap:** 100 characters (only used by the fallback)
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+`campus_life` documents are short (88 docs, ~317 characters average) and
+structured as a title line followed by one or more blank-line-separated
+paragraphs, each covering one sub-topic (e.g. `housing_old_brewhouse.txt` has
+separate paragraphs for building history, "the good," "the bad," and
+laundry/noise). A fixed 800-character window either swallowed a whole
+document whole or sliced straight through the middle of an unrelated
+paragraph, mixing two facts into one chunk.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+`chunker.py::split_documents` instead splits on paragraph breaks first, so
+each chunk is one self-contained thought. The document's title line gets
+merged into the first body paragraph rather than becoming its own tiny chunk
+(otherwise every one of the 88 documents would produce a ~30-character
+title-only chunk). Checking the actual paragraph lengths across the corpus
+(183 paragraphs total) showed only 2 exceed 300 characters — so 300 is set
+as a ceiling that catches those two outliers without ever touching the other
+181. For a paragraph over that ceiling, whole sentences are packed in until
+the next one would push it over the limit, so the cut lands on a sentence
+boundary instead of mid-word; only a single sentence longer than 300
+characters on its own would fall back further to a raw character window with
+100-character overlap, which never actually happens in this corpus.
 
-     Milestone 3. -->
+I changed my mind partway through: my first pass just cut every document at a
+fixed 400/100 window, which is a smaller version of the same problem the
+starter had. Looking at the actual chunk output showed a 1-character chunk
+and paragraphs sliced mid-sentence, which is what pushed me to paragraph-based
+splitting instead of just shrinking the same fixed-window approach.
 
 ## Sample Chunks
 
-<!-- Five chunks, pasted as text. Label each one and name the file it came from
-     AND the function that produced it — the grader checks your code against
-     what you claim here.
-
-     `python app.py chunks -n 5` prints all three for you. Copy them straight
-     across.
-
-     Milestone 3. -->
-
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `dining_north_kitchen.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+North Kitchen. Second-year here. Wait times: none, it seats 60 and is rarely more than half full. The thing worth going for is the rotating regional menu, which changes fortnightly and is ambitious. The thing to know is that closed all summer and during reading week.
 ```
 
-**Chunk 2** — source: `` — produced by: ``
+**Chunk 2** — source: `course_biol_160.txt#2` — produced by: `chunker.py::split_documents`
 
 ```
+The one piece of advice: the unit tests come fast, roughly every three weeks; falling behind once is very hard to recover from.
 ```
 
-**Chunk 3** — source: `` — produced by: ``
+**Chunk 3** — source: `course_econ_101.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+Expect 4 hours a week outside class.
 ```
 
-**Chunk 4** — source: `` — produced by: ``
+**Chunk 4** — source: `admin_housing_lottery.txt#0` — produced by: `chunker.py::split_documents`
 
 ```
+On the housing lottery. The housing lottery is not random in the way most people assume. Rising sophomores get a number drawn at random, but juniors and seniors are ordered by accumulated credit hours first, and only tie-break randomly.
 ```
 
-**Chunk 5** — source: `` — produced by: ``
+**Chunk 5** — source: `admin_housing_lottery.txt#1` — produced by: `chunker.py::split_documents`
 
 ```
+That means a senior who took summer courses reliably beats a senior who didn't. Numbers come out the second week of March and selection runs over four evenings.
 ```
 
 ## Sample Answer

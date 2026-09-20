@@ -22,10 +22,13 @@ to it, write down what you saw, and move on. That's a real observation about
 your pipeline, not giving up.
 """
 
+import re
 from dataclasses import dataclass
 
 import config
 from ingest import Document
+
+_SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
 
 
 @dataclass
@@ -80,24 +83,95 @@ def fallback_split(
     return chunks
 
 
+def _make_chunk(text: str, source: str, index: int) -> Chunk:
+    return Chunk(
+        text=text,
+        source=source,
+        index=index,
+        produced_by="chunker.py::split_documents",
+    )
+
+
+def _split_by_words(text: str, source: str, index: int, chunks: list[Chunk]) -> int:
+    """Last-resort fallback: fixed-size character windows with overlap."""
+    start = 0
+    while start < len(text):
+        piece = text[start : start + config.CHUNK_SIZE].strip()
+        if piece:
+            chunks.append(_make_chunk(piece, source, index))
+            index += 1
+        start += config.CHUNK_SIZE - config.CHUNK_OVERLAP
+    return index
+
+
+def _split_oversized_paragraph(
+    paragraph: str, source: str, index: int, chunks: list[Chunk]
+) -> int:
+    """
+    A paragraph longer than CHUNK_SIZE. Pack whole sentences into a chunk
+    until the next sentence would push it over the limit, so cuts land on
+    sentence boundaries instead of mid-word. A single sentence longer than
+    CHUNK_SIZE on its own still needs the raw character-window fallback.
+    """
+    sentences = _SENTENCE_BOUNDARY.split(paragraph)
+    current = ""
+
+    for sentence in sentences:
+        candidate = f"{current} {sentence}".strip() if current else sentence
+
+        if len(candidate) <= config.CHUNK_SIZE:
+            current = candidate
+            continue
+
+        if current:
+            chunks.append(_make_chunk(current, source, index))
+            index += 1
+
+        if len(sentence) <= config.CHUNK_SIZE:
+            current = sentence
+        else:
+            index = _split_by_words(sentence, source, index, chunks)
+            current = ""
+
+    if current:
+        chunks.append(_make_chunk(current, source, index))
+        index += 1
+
+    return index
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Paragraph-aware chunker for campus_life.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    Each document is "Title\\n\\nParagraph\\n\\nParagraph...". Splitting on
+    blank lines keeps each paragraph's single thought intact instead of
+    cutting it at a fixed character count. The title is merged into the first
+    body paragraph so it doesn't become its own near-empty chunk.
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    A paragraph over CHUNK_SIZE (rare in this corpus — 2 out of 183) falls
+    back to packing whole sentences up to the limit, and only drops to a raw
+    character window if a single sentence alone exceeds CHUNK_SIZE.
     """
-    return fallback_split(documents)
+    chunks: list[Chunk] = []
+
+    for doc in documents:
+        paragraphs = [p.strip() for p in doc.text.split("\n\n") if p.strip()]
+
+        if len(paragraphs) > 1:
+            paragraphs = [f"{paragraphs[0]}. {paragraphs[1]}"] + paragraphs[2:]
+
+        index = 0
+        for paragraph in paragraphs:
+            if len(paragraph) <= config.CHUNK_SIZE:
+                chunks.append(_make_chunk(paragraph, doc.source, index))
+                index += 1
+            else:
+                index = _split_oversized_paragraph(
+                    paragraph, doc.source, index, chunks
+                )
+
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
