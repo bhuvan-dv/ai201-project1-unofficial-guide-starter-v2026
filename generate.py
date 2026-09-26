@@ -279,6 +279,9 @@ Rules:
 - Use only the information in the documents below. Do not use anything you know from elsewhere.
 - If the documents don't cover the question, say you don't have enough information. Do not guess.
 - Name the document your answer came from, using the filename given in each excerpt.
+- If the question can be answered yes/no, still report every other relevant fact in the
+  same excerpt, even if it wasn't asked for directly. A one-word answer that drops a fact
+  sitting in the same sentence is incomplete.
 - Be brief. Two or three sentences is usually enough."""
 
 
