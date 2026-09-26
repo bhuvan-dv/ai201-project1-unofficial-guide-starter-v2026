@@ -103,6 +103,16 @@ These values will help determine where the current system is to help with troubl
 0.70 – 0.84 (Good / Standard Production)
 0.50 – 0.69 (Average / Room for Improvement)
 Below 0.50 (Poor / Failing)
+
+> **Revised in unit 2:** For at least 4 of my 5 test questions, the answer
+> contains everything named in that question's `expects` field, checked by
+> hand against all three runs.
+>
+> **Why revised:** There's no scorer, labeled dataset, or TP/FP/FN mechanism
+> anywhere in this repo to compute an F1 score against, in unit 1 or unit 2.
+> The target was never actually checkable. Hand-scoring against my own
+> `expects` field is something I can check the same way twice.
+
 <!-- ─────────────────────────────────────────────────────────────────────────
      UNIT 2 — read this before you change anything above.
 

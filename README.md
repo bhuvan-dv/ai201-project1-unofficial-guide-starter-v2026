@@ -194,85 +194,136 @@ that part myself.
 
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. No chunk under 40 / over 600 chars | 0 violations | 1 under 40 | 1 under 40 | 1 under 40 | MISSED |
+| 5. Answers match `expects` (revised from F1) | 4 of 5 | 4/5 | 4/5 | 4/5 | MET |
 
-<!-- Underneath, paste the REAL output for each criterion from one of your
-     runs — the actual text your system produced, not a description of it.
-     Name the file and function that produced it. -->
+Criteria 1 and 3 are identical across all three runs because retrieval and
+the gate are both deterministic against a fixed index and a fixed cutoff —
+only the generated answer's exact wording varies between runs, which is what
+criterion 2 (and the hand-scoring behind criterion 5) actually exercises.
+
+Real output, produced by `store.py::search` (criterion 1 — retrieved chunks
+for "What's the Workload for ENGL 205?"):
+
+```
+0.392  course_engl_205_workload.txt  "Workload for ENGL 205 Writing for the Sciences. People keep asking so: 4 to 5 hours a week..."
+0.468  course_phys_130_workload.txt  "Workload for PHYS 130 Mechanics..."
+0.478  course_cs_210_workload.txt    "Workload for CS 210 Data Structures..."
+```
+
+Real output, produced by `generate.py::answer_from_chunks` (criterion 2 —
+run 1, "Where is the health counselling at?"):
+
+```
+Counselling is in the same building as the health centre, and it has a wait time of usually three or four days for a first session.
+
+Source: health_center.txt
+```
+
+Real output, produced by `gate.py::check` (criterion 3 — "What is the
+capital of Mongolia?"):
+
+```
+best distance 0.780 is over the 0.6 cutoff — refusing
+I don't have enough information about that.
+```
+
+Real output, produced by `chunker.py::split_documents` (criterion 4 — the
+one chunk that misses the floor):
+
+```
+course_econ_101.txt#1  (36 chars)
+"Expect 4 hours a week outside class."
+```
+
+Real output, produced by `generate.py::answer_from_chunks` (criterion 5 —
+run 1, "Are there lots of problem sets in HIST 118 Modern World History
+class?", expects: "No problem sets but there's a lot reading about 120
+pages per week"):
+
+```
+No, there are no problem sets in HIST 118 Modern World History.
+
+Sources: course_hist_118_workload.txt
+```
 
 ## Verdicts
 
-<!-- MET or MISSED for each of the five, against the target you wrote last
-     unit — not a new one. Plus a sentence on how you decided. That sentence
-     matters most where it was close.
-
-     If your target said 4 of 5 and your runs came out 4, 3, 4, that's a MISS.
-     The target has to hold, not show up occasionally.
-
-     Milestone 2. -->
-
 | # | Criterion | Verdict | How I decided |
 |---|---|---|---|
-| 1 |  |  |  |
-| 2 |  |  |  |
-| 3 |  |  |  |
-| 4 |  |  |  |
-| 5 |  |  |  |
+| 1 | Retrieved chunk contains the answer | MET | All 5 questions' retrieved chunks contained the exact `expects` phrase, in all 3 runs (retrieval is deterministic), well clear of the 4-of-5 target. |
+| 2 | Every answer names a source | MET | Read all 15 generated answers by hand; every one names at least one source file, in every run. |
+| 3 | Gate stops out-of-corpus questions | MET | All 5 `OUT_OF_SCOPE` questions refused, at distances 0.780+ against the 0.6 cutoff, clear of the 4-of-5 target. |
+| 4 | No chunk under 40 / over 600 chars | MISSED | One chunk (`course_econ_101.txt#1`, 36 chars) is under the floor. The target has no tolerance built in, so one violation is a miss, not a rounding error. |
+| 5 | Answers match `expects` (revised from F1) | MET | Hand-scored all 15 answers against `expects`; 4 of 5 questions correct in every single run. The one consistent miss (HIST 118) is diagnosed below. |
 
 ## Diagnoses
 
-<!-- For each miss: which stage caused it, and how. The stage alone isn't
-     enough — you need the mechanism.
+**Criterion 4 — MISSED. Stage: chunking.**
+`chunker.py::split_documents` treats every blank-line-separated paragraph as
+one chunk, with no minimum-length check. `course_econ_101.txt`'s workload
+paragraph is naturally a single short sentence — "Expect 4 hours a week
+outside class." (36 characters) — so it becomes its own chunk, under the
+40-character floor. The chunker has no step that merges a paragraph this
+short into a neighbor.
 
-     Not a diagnosis: "Question 3 didn't work."
-     A diagnosis:     "Question 3 asks about laundry costs. The answer is in
-                       one sentence that got split across two chunks, so
-                       neither chunk on its own contains it."
+**HIST 118 — a consistent pattern behind criterion 5's one miss. Stage:
+generation.**
+The retrieved chunk (`course_hist_118_workload.txt`) contains the full
+fact in every run — "a lot of reading, about 120 pages a week, but no
+problem sets" — so the information was never missing from what the model
+saw. But `generate.py::answer_from_chunks`'s grounding prompt only
+instructs the model to answer using the documents and name its source; it
+never asks for every relevant fact in the chunk to be reported. Because the
+question is phrased as a yes/no ("Are there lots of problem sets...?"), the
+model answered the literal yes/no and dropped the reading-load clause from
+the same sentence it cited — in all 3 runs, not once. That's a systematic
+prompt gap, not noise, and it's the basis for this unit's improvement.
 
-     The five stages: loading → chunking → embedding → retrieval → generation.
-
-     Look for a pattern. If three misses all ask about numbers, that's one
-     problem, not three.
-
-     Missed nothing? Say so, then say honestly whether your targets were set
-     low, and which one you'd tighten and to what.
-
-     Milestone 3. -->
+I didn't miss any criterion by a wide enough margin to think my targets were
+set low overall — criteria 1, 2, and 3 all cleared their targets with margin
+to spare (5/5 against 4-of-5 twice, and 5/5 against 5-of-5). Criterion 4 is
+the one target that had zero tolerance built in, which is exactly why one
+outlier chunk was enough to miss it.
 
 ## The Improvement
 
-**What I changed:**
+**What I changed:** Added one rule to `generate.py::GROUNDING_INSTRUCTION`:
+if a question can be answered yes/no, the model must still report every
+other relevant fact in the same cited excerpt, not just the literal
+yes/no.
 
-**Why I picked it:**
-
-<!-- Connect it to a specific diagnosis above in one sentence. If you can't,
-     you picked a fix because it sounded impressive. -->
+**Why I picked it:** It follows directly from the HIST 118 diagnosis above —
+the chunk had the full fact in every run, but the model was dropping half of
+it because nothing in the prompt asked for more than a literal answer to the
+literal question.
 
 ### Run Log — After
 
-<!-- Same format, same five criteria, three runs each.
-     `python run_eval.py --label after` -->
-
 | Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
 |---|---|---|---|---|---|
-| 1. Retrieved chunk contains the answer | 4 of 5 |  |  |  |  |
-| 2. Every answer names a source | 5 of 5 |  |  |  |  |
-| 3. Gate stops out-of-corpus questions | 4 of 5 |  |  |  |  |
-| 4. | | | | | |
-| 5. | | | | | |
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. No chunk under 40 / over 600 chars | 0 violations | 1 under 40 | 1 under 40 | 1 under 40 | MISSED |
+| 5. Answers match `expects` (revised from F1) | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
 
-**Did it help?**
+Real output, produced by `generate.py::answer_from_chunks` (HIST 118, run 1,
+after the change):
 
-<!-- Say plainly whether it did, and how you know. If it made things worse,
-     say that — a change that backfired, honestly reported, earns full credit
-     and is more interesting than one that worked. What matters is that you can
-     tell.
+```
+No, there are no problem sets in HIST 118 Modern World History, but there is a lot of reading (about 120 pages a week). This information comes from **course_hist_118_workload.txt**.
+```
 
-     Milestone 4. -->
+**Did it help?** Yes. Criterion 5 went from 4/5 to 5/5 in every run — HIST
+118 now includes the reading-load fact every single time, and none of the
+other 4 questions regressed (still 5/5 source-naming, same retrieval,
+same gate behavior, since the change only touched the generation prompt).
+Criterion 4 is untouched by this change, since it's a chunking-stage miss
+and this fix was at the generation stage — still MISSED, exactly as before.
 
 ## What's Still Broken
 
