@@ -167,6 +167,24 @@ actual reasoning for any of the five criteria, pointing to the assignment's
 own rule against letting AI write acceptance criteria, so I wrote and fixed
 that part myself.
 
+**Unit 2:**
+
+**4.** I asked Claude to hand-score my 15 answers (5 questions × 3 runs)
+against each question's `expects` field, since criterion 5's original F1
+target had no scorer or labeled dataset behind it anywhere in the repo. It
+came back with 4 of 5 questions correct in every run, and flagged that HIST
+118 was wrong in all three — not a fluke, since the retrieved chunk had the
+full answer every time and the model still only reported half of it. That
+finding became my Milestone 3 diagnosis, not something I asked for directly.
+
+**5.** I asked Claude to fix the HIST 118 problem. Instead of touching
+retrieval or chunking, it traced the failure to the generation stage first
+(the fact was in the cited chunk in every run, so the miss couldn't be
+upstream of generation) and added one rule to the grounding prompt requiring
+every relevant fact in the excerpt to be reported, not just a literal
+yes/no. It re-ran the full test to confirm the other 4 questions didn't
+regress before calling it done.
+
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
@@ -327,17 +345,39 @@ and this fix was at the generation stage — still MISSED, exactly as before.
 
 ## What's Still Broken
 
-<!-- For each criterion still missed after your fix: what you'd do about it,
-     and why you stopped where you did.
+**Criterion 4 (no chunk under 40 / over 600 chars) is still MISSED after my
+fix.** The one violating chunk (`course_econ_101.txt#1`, 36 chars) is
+untouched, because this unit's improvement targeted the generation stage
+(the HIST 118 fact-dropping problem), and criterion 4's miss is a chunking-
+stage problem — different stage, different fix, and this unit's rule is one
+change only.
 
-     "I ran out of time" is fine if it's true. Pretending nothing is left is
-     not.
-
-     Milestone 5. -->
+What I'd do about it: add a merge step to `chunker.py::split_documents` — if
+a paragraph comes out under some floor (40 characters, or maybe a bit above
+it), merge it into the previous chunk instead of leaving it standalone. I
+stopped here because it's a single outlier out of 189 chunks, on a question
+that isn't even one of my five test questions, and the generation-stage fix
+had a clearer, more test-connected payoff this unit.
 
 ## What I'd Do Differently
 
-<!-- Knowing what you know now — which of your five criteria would you write
-     differently, and why?
+Knowing what I know now:
 
-     Milestone 5. -->
+- **Criterion 5** already got revised in `criteria.md` this unit — I'd write
+  it as a plain, hand-checkable target from the start next time (something
+  like matching against `expects`) instead of an F1 formula with no scorer
+  or labeled dataset behind it. It sounded rigorous when I wrote it in unit
+  1, but rigor that can't actually be computed isn't rigor.
+
+- **Criterion 4**'s "no chunk under 40 or over 600" has zero tolerance built
+  in — one outlier out of 189 chunks was enough to miss it outright. A rate-
+  based target (something like "at least 95% of chunks fall between 40 and
+  600 characters") would still catch a real problem without a single natural
+  short sentence sinking the whole criterion.
+
+- **Criterion 3** cleared with a lot of room to spare — all 5 out-of-scope
+  distances landed at 0.780 or higher against a 0.6 cutoff, nowhere near the
+  boundary. `hw2.md` is right that clearing everything easily usually means
+  the target was safe, not that the system is excellent. I'd tighten this
+  one next time, maybe to "5 of 5" instead of "4 of 5," since my corpus and
+  cutoff give it that much margin.
