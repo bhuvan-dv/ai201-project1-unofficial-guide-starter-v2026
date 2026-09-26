@@ -140,6 +140,20 @@ def _split_oversized_paragraph(
     return index
 
 
+MIN_CHUNK_SIZE = 40
+
+
+def _merge_short_paragraphs(paragraphs: list[str], floor: int) -> list[str]:
+    """A paragraph under `floor` characters merges into the previous one."""
+    merged: list[str] = []
+    for paragraph in paragraphs:
+        if merged and len(paragraph) < floor:
+            merged[-1] = f"{merged[-1]} {paragraph}"
+        else:
+            merged.append(paragraph)
+    return merged
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
     Paragraph-aware chunker for campus_life.
@@ -147,7 +161,9 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
     Each document is "Title\\n\\nParagraph\\n\\nParagraph...". Splitting on
     blank lines keeps each paragraph's single thought intact instead of
     cutting it at a fixed character count. The title is merged into the first
-    body paragraph so it doesn't become its own near-empty chunk.
+    body paragraph so it doesn't become its own near-empty chunk, and any
+    paragraph under MIN_CHUNK_SIZE merges into the previous one so it doesn't
+    stand alone either.
 
     A paragraph over CHUNK_SIZE (rare in this corpus: 2 out of 183) falls
     back to packing whole sentences up to the limit, and only drops to a raw
@@ -160,6 +176,8 @@ def split_documents(documents: list[Document]) -> list[Chunk]:
 
         if len(paragraphs) > 1:
             paragraphs = [f"{paragraphs[0]}. {paragraphs[1]}"] + paragraphs[2:]
+
+        paragraphs = _merge_short_paragraphs(paragraphs, MIN_CHUNK_SIZE)
 
         index = 0
         for paragraph in paragraphs:
