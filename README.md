@@ -359,6 +359,47 @@ stopped here because it's a single outlier out of 189 chunks, on a question
 that isn't even one of my five test questions, and the generation-stage fix
 had a clearer, more test-connected payoff this unit.
 
+## Second Improvement (Stretch)
+
+**Declaring this before building it:** attempting the stretch goal — a
+second measured improvement. This one is a second chunking-strategy change,
+aimed squarely at the one still-open miss above: adding a merge step to
+`chunker.py::split_documents` so a paragraph under the 40-character floor
+gets merged into the previous chunk instead of standing alone.
+
+**What I changed:** Added `_merge_short_paragraphs` to `chunker.py`. Any
+paragraph under `MIN_CHUNK_SIZE` (40 characters) now merges into the
+previous chunk in the same document, instead of becoming its own chunk.
+
+**Why I picked it:** It's a direct fix for criterion 4's diagnosis — the
+chunker had no minimum-length check, and `course_econ_101.txt`'s "Expect 4
+hours a week outside class." (36 chars) was the one paragraph short enough
+to hit that gap.
+
+### Run Log — After (second improvement)
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Retrieved chunk contains the answer | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 2. Every answer names a source | 5 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 3. Gate stops out-of-corpus questions | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+| 4. No chunk under 40 / over 600 chars | 0 violations | 0 violations | 0 violations | 0 violations | MET |
+| 5. Answers match `expects` (revised from F1) | 4 of 5 | 5/5 | 5/5 | 5/5 | MET |
+
+Real output, produced by `chunker.py::split_documents` (criterion 4, after
+the merge):
+
+```
+course_econ_101.txt#0  (247 chars)
+"ECON 101 Introduction to Economics. Took this last spring. Format is large lecture, 300 people, with small discussion sections. Assessment: two midterms and a final, all multiple choice. Curved, and generously. Expect 4 hours a week outside class."
+```
+
+**Did it help?** Yes, cleanly — the corpus went from 189 chunks (1 under the
+40-character floor) to 188 chunks (0 violations), and every other criterion
+held at exactly the same result as the first improvement's run (same
+retrieval distances, same gate behavior, same source-naming, HIST 118 still
+correct). All five criteria are now MET, three runs each.
+
 ## What I'd Do Differently
 
 Knowing what I know now:
